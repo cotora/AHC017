@@ -79,11 +79,6 @@ struct Edge{
 	Edge(int to,ll w):to(to),w(w){}
 };
 
-struct Point{
-	int x;
-	int y;
-	Point(int x,int y):x(x),y(y){}
-};
 
 using Graph=vector<vector<Edge>>;
 
@@ -153,71 +148,149 @@ void printYesOrNo(bool x){
 }
 
 Graph G;
+vector<map<int,ll>> GM;
+vb seen;
+int n,d,k,m;
+vi ans;
+vi rnum;
+map<pair<int,int>,int> mp;
+vector<pair<pair<int,int>,ll>> es;
+vvl base;
+const int snum=5;
+vl starts;
 
-int dist(Point a,Point b){
-	return (a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y);
+void dfs(int x,int p,int day){
+	day%=d+1;
+	if(day==0)day++;
+	while(rnum[day]==k){
+		day++;
+		day%=d+1;
+		if(day==0)day++;
+	}
+	int tmpx=x;
+	int tmpp=p;
+	if(tmpx>tmpp){
+		swap(tmpx,tmpp);
+	}
+	if(mp.find({tmpx,tmpp})!=mp.end()){
+	if(seen[mp[{tmpx,tmpp}]])return;
+	ans[mp[{tmpx,tmpp}]]=day;
+	rnum[day]++;
+	seen[mp[{tmpx,tmpp}]]=true;
+	}
+	for(auto v : G[x]){
+		dfs(v.to,x,day+1);
+	}
 }
 
-int eval(Point a,Point b){
-	return dist(a,b);
+//O(|E|log|V|)
+//sは始点
+vector<ll> dijkstra(int s){
+	vl dist(n,INF);
+	dist[s]=0;
+
+	priority_queue<pair<ll,int>,vector<pair<ll,int>>,greater<pair<ll,int>>> que;
+	que.push(make_pair(dist[s],s));
+
+	while(!que.empty()){
+		int v=que.top().second;
+		ll dd=que.top().first;
+		que.pop();
+
+		if(dd>dist[v])continue;
+
+		for(auto e : GM[v]){
+			if(chmin(dist[e.first],dist[v]+e.second)){
+				que.push(make_pair(dist[e.first],e.first));
+			}
+		}
+	}
+	return dist;
+}
+
+ll score(){
+	ll res=0;
+	vvi dedge(d+1);
+	vvl dist(snum);
+	for(int i=0;i<m;i++){
+		dedge[ans[i]].push_back(i);
+	}
+	for(int i=1;i<=d;i++){
+		for(auto e : dedge[i]){
+			GM[es[e].first.first].erase(es[e].first.second);
+			GM[es[e].first.second].erase(es[e].first.first);
+		}
+		for(int j=0;j<snum;j++){
+			dist[j]=dijkstra(starts[j]);
+		}
+		for(auto e : dedge[i]){
+			GM[es[e].first.first][es[e].first.second]=es[e].second;
+			GM[es[e].first.second][es[e].first.first]=es[e].second;
+		}
+		ll tmp=0;
+		for(int k=0;k<snum;k++){
+			for(int j=0;j<n;j++){
+				if(starts[k]==j)continue;
+				tmp+=dist[k][j]-base[k][j];
+			}
+		}
+		tmp/=(n-1)*snum;
+		res+=tmp;
+	}
+	res/=d;
+	res*=1000;
+	return res;
 }
 
 int main(void){
 	ios::sync_with_stdio(false);
 	cin.tie(nullptr);
 	cout<<fixed<<setprecision(15);
-	int n,m,d,k;
 	cin>>n>>m>>d>>k;
 	G.resize(n);
-	vector<pair<pair<int,int>,ll>> es(m);
-	vector<Point> node;
+	GM.resize(n);
+	seen.resize(m,false);
+	ans.resize(m);
+	rnum.resize(d+1,0);
+	es.resize(m);
+	base.resize(snum);
+	starts.resize(snum);
+
+	random_device rnd;
+	mt19937 mt(rnd());
+	uniform_int_distribution<> rand100(0,n-1);
+	for(int i=0;i<snum;i++){
+		starts[i]=rand100(mt);
+	}
 	repi(m){
 		int u,v;
 		ll w;
 		cin>>u>>v>>w;
 		u--;v--;
+		if(u>v){
+			swap(u,v);
+		}
 		G[u].push_back(Edge(v,w));
 		G[v].push_back(Edge(u,w));
+		GM[u][v]=w;
+		GM[v][u]=w;
+		mp[make_pair(u,v)]=i;
 		es[i]=make_pair(make_pair(u,v),w);
 	}
-	repi(n){
-		int x,y;
-		cin>>x>>y;
-		node.push_back(Point(x,y));
+	for(int i=0;i<snum;i++){
+	base[i]=dijkstra(starts[i]);
 	}
-	vector<bool> done(m,false);
-	vector<int> ans(m);
-	int day=1;
-	int count=0;
-	for(int i=0;i<m;i++){
-		if(done[i])continue;
-		int b=0;
-		int ch=-1;
-		done[i]=true;
-		if(count==m/d){
-			day++;
-			count=0;
+	vi finalAns;
+	ll s=1LL<<55;
+	for(int i=0;i<n;i+=10){
+		dfs(i,i,1);
+		if(score()<s){
+			s=score();
+			finalAns=ans;
 		}
-		ans[i]=day;
-		count++;
-		if(count==m/d){
-			day++;
-			count=0;
-		}
-		//cerr<<i<<endl;
-		Point base=Point((node[es[i].first.first].x+node[es[i].first.second].x)/2,(node[es[i].first.first].y+node[es[i].first.second].y)/2);
-		for(int j=0;j<m;j++){
-			if(done[j])continue;
-			Point tmp=Point((node[es[j].first.first].x+node[es[j].first.second].x)/2,(node[es[i].first.first].y+node[es[i].first.second].y)/2);
-			if(eval(base,tmp)>b){
-				ch=j;
-				b=eval(base,tmp);
-			}
-		}
-		ans[ch]=day;
-		count++;
-		done[ch]=true;
 	}
-	printVector(ans);
+	//for(int i=1;i<=d;i++)cerr<<rnum[i]<<" ";
+	//cerr<<endl;
+	printVector(finalAns);
 	return 0;
 }
