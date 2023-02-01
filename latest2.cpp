@@ -189,8 +189,10 @@ void dfs(int x,int p,int day){
 		}
 		if(seen[mp[{tp,te}]])adjacentDay.insert(ans[mp[{tp,te}]]);
 	}
-	if(adjacentDay.size()!=d){
-		while(adjacentDay.find(day)!=adjacentDay.end() || rnum[day]==k){
+	uset<int> notSet(adjacentDay);
+	for(int i=1;i<=d;i++)if(rnum[i]==k)notSet.insert(i);
+	if(notSet.size()!=d){
+		while(notSet.find(day)!=notSet.end()){
 			day++;
 			day%=d+1;
 			if(day==0)day++;

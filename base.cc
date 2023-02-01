@@ -75,11 +75,18 @@ typedef pair<ll,ll> pll;
 
 struct Edge{
 	int to;
+	int ind;
 	ll w;
-	Edge(int to,ll w):to(to),w(w){}
+	Edge(int to,int ind,ll w):to(to),ind(ind),w(w){}
 };
 
-using Graph=vector<umap<int,ll>>;
+struct Point{
+	int x;
+	int y;
+	Point(int x,int y):x(x),y(y){}
+};
+
+using Graph=vector<vector<Edge>>;
 
 template <typename T>
 bool chmin(T &x,T y){
@@ -147,38 +154,64 @@ void printYesOrNo(bool x){
 }
 
 Graph G;
+vb seen;
+int d;
+int k;
+vi ans;
+vi rnum;
+map<pair<int,int>,int> mp;
+
+void dfs(int x,int p,int day){
+	day%=d+1;
+	if(day==0)day++;
+	while(rnum[day]==k){
+		day++;
+		day%=d+1;
+		if(day==0)day++;
+	}
+	int tmpx=x;
+	int tmpp=p;
+	if(tmpx>tmpp){
+		swap(tmpx,tmpp);
+	}
+	if(mp.find({tmpx,tmpp})!=mp.end()){
+	if(seen[mp[{tmpx,tmpp}]])return;
+	ans[mp[{tmpx,tmpp}]]=day;
+	rnum[day]++;
+	seen[mp[{tmpx,tmpp}]]=true;
+	}
+	for(auto v : G[x]){
+		dfs(v.to,x,day+1);
+	}
+}
 
 int main(void){
 	ios::sync_with_stdio(false);
 	cin.tie(nullptr);
 	cout<<fixed<<setprecision(15);
-	int n,m,d,k;
+	int n,m;
 	cin>>n>>m>>d>>k;
 	G.resize(n);
+	seen.resize(m,false);
+	ans.resize(m,false);
+	rnum.resize(d+1,0);
 	vector<pair<pair<int,int>,ll>> es(m);
-	vvi rnum(d+1);
 	repi(m){
 		int u,v;
 		ll w;
 		cin>>u>>v>>w;
 		u--;v--;
-		G[u][v]=w;
-		G[v][u]=w;
+		if(u>v){
+			swap(u,v);
+		}
+		G[u].push_back(Edge(v,i,w));
+		G[v].push_back(Edge(u,i,w));
+		mp[make_pair(u,v)]=i;
 		es[i]=make_pair(make_pair(u,v),w);
 	}
-	random_device rnd;
-	mt19937 mt(rnd());
-	uniform_int_distribution<> rand100(1,d);
-	ll score=1LL<<50;
-	vi ans(m);
-		for(int i=0;i<m;i++){
-			int t=rand100(mt);
-			while(rnum[t].size()==m/d){
-				t=rand100(mt);
-			}
-			rnum[t].push_back(i);
-			ans[i]=t;
-		}
+	dfs(10,10,1);
+	//for(int i=1;i<=d;i++)cerr<<rnum[i]<<" ";
+	//cerr<<endl;
 	printVector(ans);
 	return 0;
 }
